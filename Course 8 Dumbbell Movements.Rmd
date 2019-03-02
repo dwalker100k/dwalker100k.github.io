@@ -1,0 +1,61 @@
+---
+title: 'Exercise Movement: Course 8 Week 4'
+author: "Darryl Walker"
+date: "February 24, 2019"
+output: html_document
+---
+
+#Classifying Exercise Movement 
+
+The overall objective is to develop a machine learning algorithm that will take dumbbell movement data as input and accurately classify the movements into one of 5 categories as output. The five categories are defined as follows:  Class A is the correct movement; class B is throwing elbows to the front; class C is lifting the dumbell halfway; class D is lowering the dumbell only half way; and class E is throwing the hips to the front. Ultimately, the final algorithm will be used to classify data from a provided test set of 20 observations and auto-graded for accuracy by Coursera.
+
+##The Data, validation set, and variable selection.
+
+The given training data set consists of 19622 observations of 160 variables.  Sensors were placed on the dumbbell, the forearm, the arm, and the waist via a belt.  The response variable is 'classe' which is a factor variable with 5 levels: A, B, C, D, and E, each defined by a particular movement as summarized above. Since the testing data set is only 20 observations, it is a good idea to further subset the given training set to provide a validation set to test the algorithm on unseen data before putting it to the official test.  Running the final algorithm on this testing set will give us an estimate of the out-of-sample error.
+
+Given that the response variable is a function of specific movements, it is intuitively reasonable to reduce the predictive variable set to the roll, pitch, and yaw measurements of the belt, arm, and dumbbell sensors.  In addition, the gyroscopic measurements in the x, y, and z directions for the same sensor placements also describe the movements.  This reduces the data set to 18 predictor variables and 1 response.
+
+The following code loades the required packages, reads in the data, creates the validation set, and subsets the data frame to the 18 predictor and 1 response variable noted above:
+```{r}
+library(caret)
+library(ggplot2)
+set.seed(343)
+
+pml_training <- read.csv("./pml-training.csv", header = TRUE)
+pml_testing <- read.csv("./pml-testing.csv", header = TRUE)
+inTrain <- createDataPartition(y = pml_training$classe, p = .7, list = FALSE)
+trainingtrain <- pml_training[inTrain,]
+trainingTest <- pml_training[-inTrain,]
+
+redTrainDF <- trainingtrain[,c("roll_belt", "roll_arm", "roll_dumbbell", "pitch_arm","pitch_belt", "pitch_dumbbell",
+                               "yaw_belt", "yaw_arm","yaw_dumbbell","gyros_dumbbell_x", "gyros_dumbbell_y",
+                               "gyros_dumbbell_z", "gyros_arm_x","gyros_arm_y",
+                                "gyros_arm_z", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z","classe")]
+redTestDF <- trainingTest[,c("roll_belt", "roll_arm", "roll_dumbbell", "pitch_arm","pitch_belt", "pitch_dumbbell",
+                             "yaw_belt", "yaw_arm","yaw_dumbbell","gyros_dumbbell_x", "gyros_dumbbell_y",
+                             "gyros_dumbbell_z", "gyros_arm_x","gyros_arm_y",
+                             "gyros_arm_z", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z","classe")]
+```
+
+##Model Selection and out of sample error
+
+Four models were built on the training data set:  LDA, GBM, SVM, and finally a Random Forest.  For the sake of space, only the RF model will be written up as it resulted in the highest out of sample accuracy on the validation set. Analysis of the other models would proceed in an analigous manner. The following code builds the Random Forest model, then makes predictions on the validation set and returns the accuracy which was 98.1%. This is my estimate for the out of sample error.
+```{r}
+rf.fit <- train(classe ~., data = redTrainDF, method = "rf")
+pred.rf.fit <- predict(rf.fit, redTestDF)
+rf.fit.acc <- confusionMatrix(redTestDF$classe, pred.rf.fit)
+rf.fit.acc
+```
+##Predicting the categories of the actual test set.
+Ultimately, we must run the final model on the actual test set and make predictions for the classe variable, and submit them for grading.  The following code reduces the actual test set to the selected predictor variables as outlined above and then makes the predictions.
+```{r}
+actualtesting <- pml_testing[,c("roll_belt", "roll_arm", "roll_dumbbell", "pitch_arm","pitch_belt", "pitch_dumbbell",
+                                "yaw_belt", "yaw_arm","yaw_dumbbell","gyros_dumbbell_x", "gyros_dumbbell_y",
+                                "gyros_dumbbell_z", "gyros_arm_x","gyros_arm_y",
+                                "gyros_arm_z", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z")]
+
+test.pred.rf <- predict(rf.fit, actualtesting)
+test.pred.rf
+```
+
+The above resulted in 20 out of 20 correct classifications for the test set, as graded by Coursera.  No doubt, if the test set was larger, the accuracy would be less than 100%.
